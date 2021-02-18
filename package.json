@@ -1,0 +1,16 @@
+{
+  "name": "google-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": ""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/google-apps-script": "^1.0.24"
+  }
+}
