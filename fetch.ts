@@ -6,10 +6,14 @@ export interface FetchParams {
   readonly method?: GoogleAppsScript.URL_Fetch.HttpMethod;
   readonly payload?: GoogleAppsScript.URL_Fetch.Payload;
 }
+export interface BusStop {
+  readonly name: string;
+  readonly symbol: string;
+}
 export interface LineDirectionParams {
   readonly color: string;
-  readonly fromStopPoint: { [k: string]: string };
-  readonly toStopPoint: { [k: string]: string };
+  readonly fromStopPoint: BusStop;
+  readonly toStopPoint: BusStop;
 }
 
 export function fetchData<T>({
@@ -23,9 +27,8 @@ export function fetchData<T>({
 
 export function sendData(dbData: { [k: string]: any }): void {
   const token: string = ScriptApp.getOAuthToken();
-  const url: string = `${
-    API_URLS.RTDB_URL
-  }".json?access_token="${encodeURIComponent(token)}`;
+  const url: string = `${API_URLS.RTDB_URL
+    }".json?access_token="${encodeURIComponent(token)}`;
   const response: GoogleAppsScript.URL_Fetch.HTTPResponse = UrlFetchApp.fetch(
     url,
     {
@@ -38,21 +41,20 @@ export function sendData(dbData: { [k: string]: any }): void {
 
 export function getData() {
   const token: string = ScriptApp.getOAuthToken();
-  const url: string = `${
-    API_URLS.RTDB_URL
-  }"lines.json?print=pretty&access_token="${encodeURIComponent(token)}`;
+  const url: string = `${API_URLS.RTDB_URL
+    }"lines.json?print=pretty&access_token="${encodeURIComponent(token)}`;
   const response: GoogleAppsScript.URL_Fetch.HTTPResponse = UrlFetchApp.fetch(
     url
   );
   const data: [] = JSON.parse(response.getContentText());
   const line: any = data.find((el: any) => el.number === 10);
-  const arr = line.courses.firstDirection;
+  const direction = line.courses.firstDirection;
 
-  arr.sort((a, b) => {
+  direction.sort((a, b) => {
     // const { symbol: fromB } = b.fromStopPoint;
     const { symbol: toA } = a.toStopPoint;
-    const toAIndex = arr.findIndex((el) => el.toStopPoint.symbol === toA);
-    const fromBIndex = arr.findIndex((el) => el.fromStopPoint.symbol === toA);
+    const toAIndex = direction.findIndex((el) => el.toStopPoint.symbol === toA);
+    const fromBIndex = direction.findIndex((el) => el.fromStopPoint.symbol === toA);
 
     console.log({ toAIndex, fromBIndex });
 
@@ -64,52 +66,102 @@ export function getData() {
     }
     return -1;
   });
-  console.log(arr);
+  console.log(direction);
 }
 
 const sortArr = () => {
   const token: string = ScriptApp.getOAuthToken();
-  const url: string = `${
-    API_URLS.RTDB_URL
-  }"lines.json?print=pretty&access_token="${encodeURIComponent(token)}`;
+  const url: string = `${API_URLS.RTDB_URL
+    }lines.json?print=pretty&access_token=${encodeURIComponent(token)}`;
   const response: GoogleAppsScript.URL_Fetch.HTTPResponse = UrlFetchApp.fetch(
     url
   );
   const data: [] = JSON.parse(response.getContentText());
-  const line: any = data.find((el: any) => el.number === 10);
-  const arr: LineDirectionParams[] = [...line.courses.firstDirection];
+  const line: any = data.find((el: any) => el.number === 24);
+  const direction: LineDirectionParams[] = [...line.courses.firstDirection];
+  // const direction: LineDirectionParams[] = [...line.courses.secondDirection];
   const sortedArr: LineDirectionParams[] = [];
 
-  const lastBusStops = arr.filter((busStop: LineDirectionParams) => {
+  const lastBusStops = direction.filter((busStop: LineDirectionParams) => {
     return (
-      arr.findIndex(
+      direction.findIndex(
         (el: LineDirectionParams) =>
           el.fromStopPoint.symbol === busStop.toStopPoint.symbol
       ) === -1
     );
   });
+  const firstBusStops = direction.filter((busStop: LineDirectionParams) => {
+    return (
+      direction.findIndex(
+        (el: LineDirectionParams) =>
+          busStop.fromStopPoint.symbol === el.toStopPoint.symbol
+      ) === -1
+    );
+  });
 
-  console.log(arr.length, sortedArr.length);
+  // console.log(direction.length, sortedArr.length);
 
-  if (lastBusStops.length === 1) {
+
+
+  if (firstBusStops.length === 1 && lastBusStops.length === 1) {
     sortedArr.unshift(...lastBusStops);
 
     do {
-      arr.forEach((el: LineDirectionParams) => {
+      direction.forEach((el: LineDirectionParams) => {
+
+        // console.log({
+        //   previous:sortedArr[0].fromStopPoint,
+        //   from: el.fromStopPoint,
+        //   to: el.toStopPoint,
+        // })
+
         if (el.toStopPoint.symbol === sortedArr[0].fromStopPoint.symbol) {
           sortedArr.unshift(el);
         }
       });
-    } while (sortedArr.length !== arr.length);
-  }
+    } while (sortedArr.length !== direction.length);
+    console.log(sortedArr);
 
-  // arr.forEach((el: LineDirectionParams) => {
+  } else {
+    console.log("jest wiecej niż jeden przystanków pocz./koń.");
+    console.log(JSON.stringify({ firstBusStops, lastBusStops }, null, 2))
+
+    const variants = firstBusStops.map((firstBusStop) => {
+      const variantDirection = [...direction];
+      const variantWithoutFirstBusStop = variantDirection.filter(el => el.fromStopPoint.symbol !== firstBusStop.fromStopPoint.symbol)
+      const variantWithoutFirstAndNextBusStops = variantWithoutFirstBusStop.filter((busStop) => {
+        const busStopIndex = variantWithoutFirstBusStop.findIndex(
+          (el: LineDirectionParams) => {
+            return busStop.fromStopPoint.symbol === el.toStopPoint.symbol
+          }
+        );    
+        const isAlternateFirstBusStop = firstBusStops.some(el => objectsAreSame(el, busStop));
+
+        return ((busStopIndex !== -1) || (isAlternateFirstBusStop))
+      })
+
+      console.log(variantWithoutFirstAndNextBusStops)
+
+
+    })
+
+  }
+  function objectsAreSame(x, y) {
+    let objectsAreSame = true;
+    for (let propertyName in x) {
+      if (x[propertyName] !== y[propertyName]) {
+        objectsAreSame = false;
+        break;
+      }
+    }
+    return objectsAreSame;
+  }
+  // direction.forEach((el: LineDirectionParams) => {
   //   if (el.toStopPoint.symbol === sortedArr[0].fromStopPoint.symbol) {
   //     sortedArr.unshift(el);
   //   }
   // });
 
-  console.log(arr.length, sortedArr.length);
 
-  console.log(sortedArr);
+
 };
