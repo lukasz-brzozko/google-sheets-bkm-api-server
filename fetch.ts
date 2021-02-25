@@ -69,37 +69,19 @@ export function getData() {
   const data: Line[] = JSON.parse(response.getContentText());
   const line: (Line | null) = data.find((el: Line) => el.number === 10);
   const direction = line.courses.firstDirection;
-
-  direction.sort((a, b) => {
-    // const { symbol: fromB } = b.fromStopPoint;
-    const { symbol: toA } = a.toStopPoint;
-    const toAIndex = direction.findIndex((el) => el.toStopPoint.symbol === toA);
-    const fromBIndex = direction.findIndex((el) => el.fromStopPoint.symbol === toA);
-
-    console.log({ toAIndex, fromBIndex });
-
-    if (fromBIndex - toAIndex === 1) {
-      return 0;
-    }
-    if (fromBIndex - toAIndex < 0 || toAIndex === -1) {
-      return 1;
-    }
-    return -1;
-  });
-  console.log(direction);
 }
 
-const sortBusStops = (direction: LineDirectionParams[], lastBusStops: LineDirectionParams[],) => {
+const sortBusStops = (course: LineDirectionParams[], lastBusStops: LineDirectionParams[],) => {
   const sortedArr: LineDirectionParams[] = [];
-  const directionCopy: LineDirectionParams[] = [...direction];
+  const courseCopy: LineDirectionParams[] = [...course];
   sortedArr.unshift(...lastBusStops);
   do {
-    directionCopy.forEach((el: LineDirectionParams) => {
+    courseCopy.forEach((el: LineDirectionParams, i) => {
       if (el.toStopPoint.symbol === sortedArr[0].fromStopPoint.symbol) {
         sortedArr.unshift(el);
       }
     });
-  } while (sortedArr.length !== directionCopy.length);
+  } while (sortedArr.length !== courseCopy.length);
 
   return sortedArr;
 }
@@ -113,7 +95,6 @@ const sortArr = () => {
   );
   const data: Line[] = JSON.parse(response.getContentText());
   const line: (Line | null) = data.find((el: Line) => el.number === 24);
-  console.log(line)
   const direction: LineDirectionParams[] = [...line.courses.firstDirection];
   // const direction: LineDirectionParams[] = [...line.courses.secondDirection];
   const sortedArr: LineDirectionParams[] = [];
@@ -135,38 +116,34 @@ const sortArr = () => {
     );
   });
 
-  // console.log(direction.length, sortedArr.length);
-
   if (firstBusStops.length === 1 && lastBusStops.length === 1) {
-    const sortedArr = sortBusStops(direction, lastBusStops)
+    const sortedArr = sortBusStops(direction, lastBusStops);
     console.log(sortedArr);
   } else {
     console.log("jest wiecej niż jeden przystanków pocz./koń.");
     console.log(JSON.stringify({ firstBusStops, lastBusStops }, null, 2))
 
-    const variants = firstBusStops.map((firstBusStop) => {
+    const variants = firstBusStops.map((firstBusStop, i) => {
       const variantDirection = [...direction];
-      const variantWithoutFirstBusStop = variantDirection.filter(el => el.fromStopPoint.symbol !== firstBusStop.fromStopPoint.symbol)
-      const variantWithoutFirstAndNextBusStops = variantWithoutFirstBusStop.filter((busStop) => {
-        const busStopIndex = variantWithoutFirstBusStop.findIndex(
-          (el: LineDirectionParams) => {
-            return busStop.fromStopPoint.symbol === el.toStopPoint.symbol
-          }
-        );
-        const isAlternateFirstBusStop = firstBusStops.some(el => objectsAreSame(el, busStop));
+      const variantWithoutFirstBusStop = variantDirection.filter(el => el.fromStopPoint.symbol !== firstBusStop.fromStopPoint.symbol);
+      let variantWithoutFirstAndNextBusStops: LineDirectionParams[] = [];
+      let filteredVariantWithoutFirstAndNextBusStops: LineDirectionParams[] = [];
+      do {
+        variantWithoutFirstAndNextBusStops = [...filteredVariantWithoutFirstAndNextBusStops];
+        const arrayToFilter = variantWithoutFirstAndNextBusStops.length === 0 ? variantWithoutFirstBusStop : variantWithoutFirstAndNextBusStops;
+        filteredVariantWithoutFirstAndNextBusStops = arrayToFilter.filter((busStop) => {
+          const busStopIndex = arrayToFilter.findIndex(
+            (el: LineDirectionParams) => {
+              return busStop.fromStopPoint.symbol === el.toStopPoint.symbol
+            }
+          );
+          const isAlternateFirstBusStop = firstBusStops.some(el => objectsAreSame(el, busStop));
 
-        return ((busStopIndex !== -1) || (isAlternateFirstBusStop))
-      })
-      console.log(variantWithoutFirstAndNextBusStops)
-      return variantWithoutFirstAndNextBusStops
+          return ((busStopIndex !== -1) || (isAlternateFirstBusStop))
+        })
+      } while (variantWithoutFirstAndNextBusStops.length !== filteredVariantWithoutFirstAndNextBusStops.length);
+      return variantWithoutFirstAndNextBusStops;
     })
-
+    variants.forEach(variant => console.log(sortBusStops(variant, lastBusStops)));
   }
-
-  // direction.forEach((el: LineDirectionParams) => {
-  //   if (el.toStopPoint.symbol === sortedArr[0].fromStopPoint.symbol) {
-  //     sortedArr.unshift(el);
-  //   }
-  // });
-
 };
