@@ -1,5 +1,4 @@
 import { API_URLS } from "./constants";
-
 export interface FetchParams {
   readonly contentType: string;
   readonly url: API_URLS;
@@ -10,10 +9,31 @@ export interface BusStop {
   readonly name: string;
   readonly symbol: string;
 }
+export interface LineCourses {
+  readonly firstDirection: LineDirectionParams[];
+  readonly secondDiretcion: LineDirectionParams[];
+}
+export interface Line {
+  readonly courses: LineCourses;
+  readonly loid: number;
+  readonly name: string;
+  readonly number: number;
+}
 export interface LineDirectionParams {
   readonly color: string;
   readonly fromStopPoint: BusStop;
   readonly toStopPoint: BusStop;
+}
+
+const objectsAreSame = (x, y) => {
+  let objectsAreSame = true;
+  for (let propertyName in x) {
+    if (x[propertyName] !== y[propertyName]) {
+      objectsAreSame = false;
+      break;
+    }
+  }
+  return objectsAreSame;
 }
 
 export function fetchData<T>({
@@ -46,8 +66,8 @@ export function getData() {
   const response: GoogleAppsScript.URL_Fetch.HTTPResponse = UrlFetchApp.fetch(
     url
   );
-  const data: [] = JSON.parse(response.getContentText());
-  const line: any = data.find((el: any) => el.number === 10);
+  const data: Line[] = JSON.parse(response.getContentText());
+  const line: (Line | null) = data.find((el: Line) => el.number === 10);
   const direction = line.courses.firstDirection;
 
   direction.sort((a, b) => {
@@ -69,6 +89,21 @@ export function getData() {
   console.log(direction);
 }
 
+const sortBusStops = (direction: LineDirectionParams[], lastBusStops: LineDirectionParams[],) => {
+  const sortedArr: LineDirectionParams[] = [];
+  const directionCopy: LineDirectionParams[] = [...direction];
+  sortedArr.unshift(...lastBusStops);
+  do {
+    directionCopy.forEach((el: LineDirectionParams) => {
+      if (el.toStopPoint.symbol === sortedArr[0].fromStopPoint.symbol) {
+        sortedArr.unshift(el);
+      }
+    });
+  } while (sortedArr.length !== directionCopy.length);
+
+  return sortedArr;
+}
+
 const sortArr = () => {
   const token: string = ScriptApp.getOAuthToken();
   const url: string = `${API_URLS.RTDB_URL
@@ -76,8 +111,9 @@ const sortArr = () => {
   const response: GoogleAppsScript.URL_Fetch.HTTPResponse = UrlFetchApp.fetch(
     url
   );
-  const data: [] = JSON.parse(response.getContentText());
-  const line: any = data.find((el: any) => el.number === 24);
+  const data: Line[] = JSON.parse(response.getContentText());
+  const line: (Line | null) = data.find((el: Line) => el.number === 24);
+  console.log(line)
   const direction: LineDirectionParams[] = [...line.courses.firstDirection];
   // const direction: LineDirectionParams[] = [...line.courses.secondDirection];
   const sortedArr: LineDirectionParams[] = [];
@@ -101,27 +137,9 @@ const sortArr = () => {
 
   // console.log(direction.length, sortedArr.length);
 
-
-
   if (firstBusStops.length === 1 && lastBusStops.length === 1) {
-    sortedArr.unshift(...lastBusStops);
-
-    do {
-      direction.forEach((el: LineDirectionParams) => {
-
-        // console.log({
-        //   previous:sortedArr[0].fromStopPoint,
-        //   from: el.fromStopPoint,
-        //   to: el.toStopPoint,
-        // })
-
-        if (el.toStopPoint.symbol === sortedArr[0].fromStopPoint.symbol) {
-          sortedArr.unshift(el);
-        }
-      });
-    } while (sortedArr.length !== direction.length);
+    const sortedArr = sortBusStops(direction, lastBusStops)
     console.log(sortedArr);
-
   } else {
     console.log("jest wiecej niż jeden przystanków pocz./koń.");
     console.log(JSON.stringify({ firstBusStops, lastBusStops }, null, 2))
@@ -134,34 +152,21 @@ const sortArr = () => {
           (el: LineDirectionParams) => {
             return busStop.fromStopPoint.symbol === el.toStopPoint.symbol
           }
-        );    
+        );
         const isAlternateFirstBusStop = firstBusStops.some(el => objectsAreSame(el, busStop));
 
         return ((busStopIndex !== -1) || (isAlternateFirstBusStop))
       })
-
       console.log(variantWithoutFirstAndNextBusStops)
-
-
+      return variantWithoutFirstAndNextBusStops
     })
 
   }
-  function objectsAreSame(x, y) {
-    let objectsAreSame = true;
-    for (let propertyName in x) {
-      if (x[propertyName] !== y[propertyName]) {
-        objectsAreSame = false;
-        break;
-      }
-    }
-    return objectsAreSame;
-  }
+
   // direction.forEach((el: LineDirectionParams) => {
   //   if (el.toStopPoint.symbol === sortedArr[0].fromStopPoint.symbol) {
   //     sortedArr.unshift(el);
   //   }
   // });
-
-
 
 };
