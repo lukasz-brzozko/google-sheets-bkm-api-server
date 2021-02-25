@@ -1,5 +1,6 @@
-import { API_URLS } from "./constants";
-import { fetchData, FetchParams, sendData } from "./fetch";
+import { API_URLS } from "./helpers/constants";
+import { fetchData } from "./helpers/fetch";
+import { FetchParams } from "./helpers/fetch.interfaces";
 
 const fetchOptions: { [k: string]: FetchParams } = {
   linesParams: {
