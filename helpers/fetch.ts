@@ -15,7 +15,7 @@ const objectsAreSame = (x, y) => {
 export function fetchData<T>({
   url,
   ...restOpts
-}: FetchParams): { [k: string]: T[] } {
+}: FetchParams) {
   const data: string = UrlFetchApp.fetch(url, restOpts).getContentText();
   const dataJSON: { [k: string]: T[] } = JSON.parse(data);
   return dataJSON;
@@ -70,10 +70,14 @@ const sortArr = () => {
     url
   );
   const data: Line[] = JSON.parse(response.getContentText());
-  const line: (Line | null) = data.find((el: Line) => el.number === 24);
-  const direction: LineDirectionParams[] = [...line.courses.firstDirection];
-  // const direction: LineDirectionParams[] = [...line.courses.secondDirection];
+  const line: (Line | null) = data.find((el: Line) => el.number === 1);
+  // const direction: LineDirectionParams[] = [...line.courses.firstDirection];
+  const direction: LineDirectionParams[] = [...line.courses.secondDirection];
   const sortedArr: LineDirectionParams[] = [];
+
+
+  // console.log(direction);
+
 
   const lastBusStops = direction.filter((busStop: LineDirectionParams) => {
     return (
@@ -97,13 +101,20 @@ const sortArr = () => {
     console.log(sortedArr);
   } else {
     console.log("jest wiecej niż jeden przystanków pocz./koń.");
-    console.log(JSON.stringify({ firstBusStops, lastBusStops }, null, 2))
-
+    console.log(JSON.stringify({ firstBusStops, lastBusStops }, null, 2));
     const variants = firstBusStops.map((firstBusStop, i) => {
       const variantDirection = [...direction];
-      const variantWithoutFirstBusStop = variantDirection.filter(el => el.fromStopPoint.symbol !== firstBusStop.fromStopPoint.symbol);
+      const variantWithoutFirstBusStop = variantDirection.filter(el => {
+
+        // (el.fromStopPoint.symbol === firstBusStop.fromStopPoint.symbol)
+
+
+        return el.fromStopPoint.symbol !== firstBusStop.fromStopPoint.symbol;
+
+      });
       let variantWithoutFirstAndNextBusStops: LineDirectionParams[] = [];
       let filteredVariantWithoutFirstAndNextBusStops: LineDirectionParams[] = [];
+      // console.log(variantWithoutFirstBusStop)
       do {
         variantWithoutFirstAndNextBusStops = [...filteredVariantWithoutFirstAndNextBusStops];
         const arrayToFilter = variantWithoutFirstAndNextBusStops.length === 0 ? variantWithoutFirstBusStop : variantWithoutFirstAndNextBusStops;
